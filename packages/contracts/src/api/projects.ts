@@ -409,6 +409,8 @@ export interface ProjectTabsState {
   updatedAt?: number;
   /** The root Design Files tab was closed for this project. */
   designFilesTabHidden?: boolean;
+  /** Folder paths hidden from Design Files and the chat file context. */
+  excludedFolders?: string[];
 }
 
 export interface Conversation {

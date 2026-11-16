@@ -3057,6 +3057,7 @@ export const hu: Dict = {
   'designFiles.groupBy': 'Csoportosítás',
   'designFiles.groupByKind': 'Típus',
   'designFiles.groupByModified': 'Módosítás',
+  'designFiles.excludeFolder': 'Exclude from files and chat',
   'designFiles.filterBy': 'Szűrés típus szerint',
   'designFiles.filterClear': 'Törlés',
   'designFiles.filterCount': '{n} típus',

@@ -3963,6 +3963,7 @@ export interface Dict {
   'designFiles.groupBy': string;
   'designFiles.groupByKind': string;
   'designFiles.groupByModified': string;
+  'designFiles.excludeFolder': string;
   'designFiles.filterBy': string;
   'designFiles.filterClear': string;
   'designFiles.filterCount': string;

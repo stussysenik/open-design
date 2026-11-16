@@ -4667,6 +4667,7 @@ export const zhCN: Dict = {
   'chat.brandBrowserSnapshotSaveFailed': '无法从浏览器保存页面快照。',
   'chat.brandBrowserAssistDownloadGuideTitle': '已打开 Browser',
   'chat.brandBrowserAssistDownloadGuideDetails': '第 1 步：打开或切到右侧 Browser tab，并完成必要的人机验证。第 2 步：点击 More，再点击“下载页面”。第 3 步：等待页面快照保存成功提示。第 4 步：回到左侧“下一步”卡片，点击“继续提取”继续程序化抽取。',
+  'designFiles.excludeFolder': 'Exclude from files and chat',
   'designFiles.projectMenu': '项目操作',
   'designFiles.createDesignSystemFromProject': '基于此项目创建设计系统',
   'designFiles.duplicateProject': '复制项目',

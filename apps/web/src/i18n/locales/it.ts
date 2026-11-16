@@ -3057,6 +3057,7 @@ export const it: Dict = {
   'designFiles.groupBy': 'Raggruppa per',
   'designFiles.groupByKind': 'Tipo',
   'designFiles.groupByModified': 'Modifica',
+  'designFiles.excludeFolder': 'Exclude from files and chat',
   'designFiles.filterBy': 'Filtra per tipo',
   'designFiles.filterClear': 'Cancella',
   'designFiles.filterCount': '{n} tipi',

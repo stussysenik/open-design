@@ -3068,6 +3068,7 @@ export const esES: Dict = {
   'designFiles.groupBy': 'Agrupar por',
   'designFiles.groupByKind': 'Tipo',
   'designFiles.groupByModified': 'Modificado',
+  'designFiles.excludeFolder': 'Exclude from files and chat',
   'designFiles.filterBy': 'Filtrar por tipo',
   'designFiles.filterClear': 'Borrar',
   'designFiles.filterCount': '{n} tipos',

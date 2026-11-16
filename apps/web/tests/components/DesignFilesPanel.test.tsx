@@ -741,6 +741,18 @@ describe("DesignFilesPanel directory navigation", () => {
     expect(dirRows[0]!.textContent).toContain("2");
   });
 
+  it("offers an exclude control that reports the folder path", () => {
+    const onExcludeFolder = vi.fn();
+    renderPanel(
+      [file({ name: "assets/logo.png", kind: "image" })],
+      { onExcludeFolder },
+    );
+
+    clickTab("folders");
+    fireEvent.click(screen.getByTestId("design-files-exclude-assets"));
+    expect(onExcludeFolder).toHaveBeenCalledWith("assets");
+  });
+
   it("pins folders behind a Folders tab", () => {
     renderPanel([
       file({ name: "assets/logo.png", kind: "image" }),

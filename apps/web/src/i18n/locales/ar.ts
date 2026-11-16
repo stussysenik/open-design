@@ -3068,6 +3068,7 @@ export const ar: Dict = {
   'designFiles.groupBy': 'التجميع حسب',
   'designFiles.groupByKind': 'النوع',
   'designFiles.groupByModified': 'تاريخ التعديل',
+  'designFiles.excludeFolder': 'Exclude from files and chat',
   'designFiles.filterBy': 'تصفية حسب النوع',
   'designFiles.filterClear': 'مسح',
   'designFiles.filterCount': '{n} أنواع',

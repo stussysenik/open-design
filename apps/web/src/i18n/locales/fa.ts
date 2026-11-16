@@ -3068,6 +3068,7 @@ export const fa: Dict = {
   'designFiles.groupBy': 'گروه‌بندی بر اساس',
   'designFiles.groupByKind': 'نوع',
   'designFiles.groupByModified': 'زمان ویرایش',
+  'designFiles.excludeFolder': 'Exclude from files and chat',
   'designFiles.filterBy': 'فیلتر بر اساس نوع',
   'designFiles.filterClear': 'پاک کردن',
   'designFiles.filterCount': '{n} نوع',

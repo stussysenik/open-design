@@ -118,7 +118,13 @@ import {
   TEAM_PROJECTS_CHANGED_EVENT,
 } from '../collab/useWorkspaceContext';
 import { useProjectCollabContext } from '../collab/collab-context';
-import { createTerminal, killTerminal, listPlugins, moveWorkspaceProject } from '../state/projects';
+import {
+  createTerminal,
+  isPathExcluded,
+  killTerminal,
+  listPlugins,
+  moveWorkspaceProject,
+} from '../state/projects';
 import { MoveToTeamConfirmDialog, moveConfirmSkipped } from './MoveToTeamConfirmDialog';
 import { DesignFilesPanel, type DesignFilesNavState } from './DesignFilesPanel';
 import {
@@ -291,6 +297,8 @@ interface Props {
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[], images?: File[]) => Promise<CommentSendResult> | CommentSendResult;
   onBrandExtractionStopRequest?: () => void;
   onRequestBrowserUsePrompt?: (prompt: string) => void;
+  /** Exclude a folder from Design Files and the chat file context. */
+  onExcludeFolder?: (folder: string) => void;
   onPluginFolderAgentAction?: (
     relativePath: string,
     action: PluginFolderAgentAction,
@@ -1378,6 +1386,7 @@ export function FileWorkspace({
   onSendBoardCommentAttachments,
   onBrandExtractionStopRequest,
   onRequestBrowserUsePrompt,
+  onExcludeFolder,
   onPluginFolderAgentAction,
   activePluginActionPaths,
   hiddenPluginActionPaths,
@@ -4507,10 +4516,13 @@ export function FileWorkspace({
             runStartedAt={runStartedAt}
             runSteps={runSteps}
             files={visibleFiles}
-            folders={projectFolders}
+            folders={projectFolders.filter(
+               (folder) => !isPathExcluded(folder.path, tabsState.excludedFolders ?? []),
+             )}
             liveArtifacts={liveArtifactEntries}
             onRefreshFiles={refreshFilesWithoutResult}
-            onCurrentDirChange={setUploadDir}
+            onExcludeFolder={onExcludeFolder}
+             onCurrentDirChange={setUploadDir}
             navState={designFilesNavRef.current}
             onNavStateChange={onDesignFilesNavStateChange}
             onOpenFile={(name) => {

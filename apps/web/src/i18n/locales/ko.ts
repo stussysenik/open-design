@@ -3057,6 +3057,7 @@ export const ko: Dict = {
   'designFiles.groupBy': '그룹 기준',
   'designFiles.groupByKind': '종류',
   'designFiles.groupByModified': '수정일',
+  'designFiles.excludeFolder': 'Exclude from files and chat',
   'designFiles.filterBy': '종류별 필터',
   'designFiles.filterClear': '지우기',
   'designFiles.filterCount': '{n}개 종류',

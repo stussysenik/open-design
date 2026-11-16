@@ -5775,7 +5775,13 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       req.params.id,
       'writeFiles',
     )) return;
-    const { tabs = [], active = null, browserTabs = [] } = req.body || {};
+    const {
+      tabs = [],
+      active = null,
+      browserTabs = [],
+      designFilesTabHidden = false,
+      excludedFolders = [],
+    } = req.body || {};
     if (!Array.isArray(tabs) || !tabs.every((t) => typeof t === 'string')) {
       return res.status(400).json({ error: 'tabs must be string[]' });
     }
@@ -5789,6 +5795,10 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
         tabs,
         active: typeof active === 'string' ? active : null,
         browserTabs,
+        ...(designFilesTabHidden === true ? { designFilesTabHidden: true } : {}),
+        ...(Array.isArray(excludedFolders) && excludedFolders.length > 0
+          ? { excludedFolders: excludedFolders.filter((f) => typeof f === 'string') }
+          : {}),
       },
     );
     res.json(result);

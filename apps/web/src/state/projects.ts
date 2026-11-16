@@ -1748,11 +1748,62 @@ function normalizeTabsState(value: unknown): OpenTabsState | null {
   };
   if (browserTabs && browserTabs.length > 0) state.browserTabs = browserTabs;
   if (record.designFilesTabHidden === true) state.designFilesTabHidden = true;
+  if (Array.isArray(record.excludedFolders)) {
+    const folders = record.excludedFolders.filter(
+      (folder): folder is string => typeof folder === 'string' && folder.trim().length > 0,
+    );
+    if (folders.length > 0) state.excludedFolders = folders;
+  }
   if (record.hasSavedState === true) state.hasSavedState = true;
   if (typeof record.updatedAt === 'number' && Number.isFinite(record.updatedAt)) {
     state.updatedAt = record.updatedAt;
   }
   return state;
+}
+
+/**
+ * A project whose Design Files tab was closed remembers that choice. While it
+ * is hidden we do not read the file list at project open: the reporter's
+ * "load files only when I open the tab" ask is expressed by the same persisted
+ * choice that hides the tab. Reopening clears the flag and triggers one load.
+ */
+export function shouldLoadFilesOnOpen(state: OpenTabsState | null): boolean {
+  return state?.designFilesTabHidden !== true;
+}
+
+/**
+ * Synchronous mount-time read of the persisted choice. Tab hydration goes
+ * through the daemon and is async, but other hooks fetch files on first mount
+ * too — without this they scan the project before the gate is known.
+ */
+export function isDesignFilesHiddenCached(
+  projectId: string,
+  workspaceContext?: WorkspaceCollabContext | null,
+): boolean {
+  return readCachedTabs(projectId, workspaceContext)?.designFilesTabHidden === true;
+}
+
+function normalizedExcludedFolder(folder: string): string {
+  return folder.trim().replace(/^\/+|\/+$/g, '');
+}
+
+/** True for a folder path or any file inside an excluded folder. */
+export function isPathExcluded(path: string, excludedFolders: readonly string[]): boolean {
+  const normalizedPath = path.replace(/^\/+/, '');
+  return excludedFolders.some((folder) => {
+    const prefix = normalizedExcludedFolder(folder);
+    return prefix.length > 0
+      && (normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`));
+  });
+}
+
+/** One filter for both the Design Files listing and the chat file context. */
+export function filterExcludedProjectFiles<T extends { name: string }>(
+  files: readonly T[],
+  excludedFolders: readonly string[],
+): T[] {
+  if (excludedFolders.length === 0) return [...files];
+  return files.filter((file) => !isPathExcluded(file.name, excludedFolders));
 }
 
 function readCachedTabs(

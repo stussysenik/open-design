@@ -3057,6 +3057,7 @@ export const tr: Dict = {
   'designFiles.groupBy': 'Grupla',
   'designFiles.groupByKind': 'Tür',
   'designFiles.groupByModified': 'Değiştirilme',
+  'designFiles.excludeFolder': 'Exclude from files and chat',
   'designFiles.filterBy': 'Türe göre filtrele',
   'designFiles.filterClear': 'Temizle',
   'designFiles.filterCount': '{n} tür',

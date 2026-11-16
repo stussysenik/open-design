@@ -3057,6 +3057,7 @@ export const fr: Dict = {
   'designFiles.groupBy': 'Grouper par',
   'designFiles.groupByKind': 'Type',
   'designFiles.groupByModified': 'Modification',
+  'designFiles.excludeFolder': 'Exclude from files and chat',
   'designFiles.filterBy': 'Filtrer par type',
   'designFiles.filterClear': 'Effacer',
   'designFiles.filterCount': '{n} types',

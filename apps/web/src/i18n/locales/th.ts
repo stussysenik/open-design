@@ -3057,6 +3057,7 @@ export const th: Dict = {
   'designFiles.groupBy': 'จัดกลุ่มตาม',
   'designFiles.groupByKind': 'ประเภท',
   'designFiles.groupByModified': 'แก้ไขล่าสุด',
+  'designFiles.excludeFolder': 'Exclude from files and chat',
   'designFiles.filterBy': 'กรองตามประเภท',
   'designFiles.filterClear': 'ล้าง',
   'designFiles.filterCount': '{n} ประเภท',

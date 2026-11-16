@@ -2,6 +2,7 @@ import { JSDOM } from 'jsdom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { installMockOpenDesignHost } from '@open-design/host/testing';
 import { advanceWorkspaceAccountGeneration } from '../../src/collab/workspace-identity';
+import { setFileLoadDeferred } from '../../src/runtime/file-load-deferral';
 import {
   buildWorkspacePermissions,
   buildWorkspaceSeatSummary,
@@ -952,6 +953,28 @@ describe('fetchAppVersionInfo', () => {
     );
 
     await expect(fetchAppVersionInfo()).resolves.toBeNull();
+  });
+});
+
+describe('fetchProjectFiles with automatic loading disabled', () => {
+  afterEach(() => {
+    setFileLoadDeferred('opted-out-project', false);
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('issues no request until the user explicitly opens Design Files', async () => {
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValue(Response.json({ files: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+    setFileLoadDeferred('opted-out-project', true);
+
+    await expect(fetchProjectFiles('opted-out-project')).resolves.toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await expect(fetchProjectFiles('opted-out-project', { force: true }))
+      .resolves.toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 

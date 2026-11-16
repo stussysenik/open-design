@@ -9,6 +9,7 @@ import {
   type SharePublishRequest,
 } from '@open-design/contracts';
 import { boundedRequestErrorCode } from '../analytics/workspace';
+import { isFileLoadDeferred } from '../runtime/file-load-deferral';
 import { publishReceiptObservation } from '@open-design/contracts/analytics';
 import type {
   ConnectorAuthConfigPrepareResponse,
@@ -2234,8 +2235,11 @@ export async function fetchProjectFiles(
     /** External writes (for example an Agent run ending) obsolete earlier reads. */
     afterChange?: boolean;
     requireAuthoritative?: boolean;
+    /** Explicit user request (opening Design Files) bypasses the opt-out. */
+    force?: boolean;
   },
 ): Promise<ProjectFile[]> {
+  if (isFileLoadDeferred(projectId) && !options?.force) return [];
   // Every reader of the same project's file list shares one request
   // (Batch A §4.3). Cancellable callers (project-card cover scans aborted
   // when Home unmounts) detach individually; the shared request is aborted

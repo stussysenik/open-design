@@ -4672,6 +4672,7 @@ export const zhTW: Dict = {
   'chat.brandBrowserSnapshotSaveFailed': '無法從瀏覽器儲存頁面快照。',
   'chat.brandBrowserAssistDownloadGuideTitle': '已開啟 Browser',
   'chat.brandBrowserAssistDownloadGuideDetails': '第 1 步：開啟或切到右側 Browser tab，並完成必要的人機驗證。第 2 步：點擊 More，再點擊「下載頁面」。第 3 步：等待頁面快照儲存成功提示。第 4 步：回到左側「下一步」卡片，點擊「繼續擷取」繼續程式化擷取。',
+  'designFiles.excludeFolder': 'Exclude from files and chat',
   'designFiles.projectMenu': '專案操作',
   'designFiles.createDesignSystemFromProject': '基於此專案創建設計系統',
   'designFiles.duplicateProject': '複製專案',

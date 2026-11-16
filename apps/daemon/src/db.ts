@@ -5936,6 +5936,12 @@ function normalizeProjectTabsState(value: unknown): ProjectTabsState | null {
   };
   if (browserTabs.length > 0) state.browserTabs = browserTabs;
   if (record.designFilesTabHidden === true) state.designFilesTabHidden = true;
+  if (Array.isArray(record.excludedFolders)) {
+    const folders = record.excludedFolders.filter(
+      (folder): folder is string => typeof folder === 'string' && folder.trim().length > 0,
+    );
+    if (folders.length > 0) state.excludedFolders = folders;
+  }
   return state;
 }
 

@@ -3057,6 +3057,7 @@ export const ja: Dict = {
   'designFiles.groupBy': 'グループ化',
   'designFiles.groupByKind': '種類',
   'designFiles.groupByModified': '更新日時',
+  'designFiles.excludeFolder': 'Exclude from files and chat',
   'designFiles.filterBy': '種類で絞り込み',
   'designFiles.filterClear': 'クリア',
   'designFiles.filterCount': '{n} 種類',

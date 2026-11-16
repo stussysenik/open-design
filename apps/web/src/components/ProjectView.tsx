@@ -1,5 +1,6 @@
 import { openExternalUrl } from "../providers/registry";
 import { homeAutoSendIdentity, stableIdentityDigest, type HomeRequestConcurrencyRejection } from '../runtime/home-auto-send-identity';
+import { setFileLoadDeferred } from '../runtime/file-load-deferral';
 import { withLiveArtifactDeliveries } from '../runtime/live-artifact-delivery';
 import { readAmrRequestConcurrency } from '../runtime/amr-request-concurrency';
 import { newerTaskDisplay } from '../runtime/chat/task-presentation';
@@ -258,7 +259,9 @@ import {
   deleteConversation as deleteConversationApi,
   duplicatePluginAsProject,
   fetchAppliedPluginSnapshot,
+  filterExcludedProjectFiles,
   getProject,
+  isDesignFilesHiddenCached,
   installGeneratedPluginFolder,
   listConversations,
   listMessages,
@@ -3431,6 +3434,13 @@ export function ProjectView({
     tabs: [],
     active: null,
   });
+  // Folder exclusions live in the same persisted project record as the tab
+  // state. Filtering here gives the Design Files panel and every chat prompt
+  // built from projectFiles one consistent view.
+  const scopedProjectFiles = filterExcludedProjectFiles(
+    projectFiles,
+    openTabsState.excludedFolders ?? [],
+  );
   // Artifact context for the header actions (settings gear, handoff) that live
   // in this workspace's header alongside FileViewer's present/share/download.
   // Mirrors the artifact_id / artifact_kind that FileViewer attaches, derived
@@ -4885,10 +4895,26 @@ export function ProjectView({
     });
   }, []);
 
+  // A closed Design Files tab is a persisted "do not scan my files" choice.
+  // The gate sits on the fetch itself because event-stream handshakes, collab
+  // reconciliation and agent runs all call refreshProjectFiles directly.
+  // Reopening the tab passes `force` for the one load the user just asked for.
+  // The synchronous cache covers the window before tab hydration commits;
+  // the hydrated state wins afterwards. Reading both avoids a one-frame race
+  // where a first-mount hook would scan before the persisted choice is known.
+  const designFilesHidden =
+    isDesignFilesHiddenCached(project.id, projectRunWorkspaceContextRef.current)
+    || openTabsState.designFilesTabHidden === true;
+  const autoLoadFiles = !designFilesHidden;
+  const fileLoadDeferredRef = useRef(false);
+  fileLoadDeferredRef.current = !autoLoadFiles;
+  setFileLoadDeferred(project.id, !autoLoadFiles);
+
   const refreshProjectFiles = useCallback(async (
-    options?: { fresh?: boolean; afterChange?: boolean },
+    options?: { fresh?: boolean; afterChange?: boolean; force?: boolean },
     onAcceptedGeneration?: (generation: number) => void,
   ): Promise<ProjectFile[]> => {
+    if (fileLoadDeferredRef.current && !options?.force) return projectFilesRef.current;
     const requestSeq = ++projectFilesRequestSeqRef.current;
     const requestedRefreshKey = filesRefreshRequestKeyRef.current;
     let next: ProjectFile[];
@@ -4898,6 +4924,7 @@ export function ProjectView({
         requireAuthoritative: true,
         ...(options?.fresh ? { fresh: true } : {}),
         ...(options?.afterChange ? { afterChange: true } : {}),
+        ...(options?.force ? { force: true } : {}),
       });
     } catch {
       // A transport/HTTP failure is not an authoritative empty directory.
@@ -4954,6 +4981,7 @@ export function ProjectView({
   );
 
   const refreshLiveArtifacts = useCallback(async (): Promise<LiveArtifactSummary[]> => {
+    if (fileLoadDeferredRef.current) return [];
     const next = await fetchLiveArtifacts(project.id, {
       workspaceContext: projectRunWorkspaceContextRef.current,
     });
@@ -4962,12 +4990,15 @@ export function ProjectView({
   }, [project.id, projectRunAuthorityKey]);
 
   const refreshWorkspaceItems = useCallback(async (
-    options?: { freshProjectFiles?: boolean },
+    options?: { freshProjectFiles?: boolean; force?: boolean },
     onAcceptedFilesGeneration?: (generation: number) => void,
   ): Promise<ProjectFile[]> => {
-    if (projectReadsHeld) return [];
+    if (projectReadsHeld || (fileLoadDeferredRef.current && !options?.force)) return [];
     const [nextFiles] = await Promise.all([
-      refreshProjectFiles({ fresh: options?.freshProjectFiles }, onAcceptedFilesGeneration),
+      refreshProjectFiles({
+        fresh: options?.freshProjectFiles,
+        force: options?.force,
+      }, onAcceptedFilesGeneration),
       refreshLiveArtifacts(),
     ]);
     return nextFiles;
@@ -5452,15 +5483,30 @@ export function ProjectView({
   // (artifact saved, sketch saved, image uploaded) refetches; on first
   // mount we also do an initial pull so attachments staged before the
   // agent has written anything still see the user's pasted images.
+  const previousAutoLoadFilesRef = useRef<boolean | null>(null);
   useEffect(() => {
+    // Wait for the persisted tab state: the "do not scan" choice is only
+    // known after loadTabs resolves, and loading before then would defeat it.
+    if (!tabsLoadedRef.current) return;
+    const previous = previousAutoLoadFilesRef.current;
+    previousAutoLoadFilesRef.current = autoLoadFiles;
+    if (!autoLoadFiles) return;
+    const reopened = previous === false;
     void refreshWorkspaceItems({
-      freshProjectFiles: filesRefresh > committedFilesRefreshKeyRef.current,
+      freshProjectFiles: reopened || filesRefresh > committedFilesRefreshKeyRef.current,
+      force: reopened,
     }).catch(() => {
       // The daemon probe can briefly lag behind a just-started local
       // runtime. Retry when daemonLive flips or the explicit refresh key
       // changes instead of leaving the project view in its empty shell.
     });
-  }, [daemonLive, refreshWorkspaceItems, filesRefresh]);
+  }, [
+    autoLoadFiles,
+    tabsHydrationVersion,
+    daemonLive,
+    refreshWorkspaceItems,
+    filesRefresh,
+  ]);
 
   // Live-reload: when the daemon's chokidar watcher reports a file change,
   // bump filesRefresh so the file list refetches with new mtimes — which
@@ -14043,7 +14089,7 @@ export function ProjectView({
     const prompt = buildBrandAgentExtractionContinuationPrompt({
       promptSeed: brandEnrichmentPromptSeed || brandEnrichmentPromptSeedCache,
       metadata: currentProject.metadata,
-      projectFiles,
+      projectFiles: scopedProjectFiles,
     });
     setBrandAgentExtractionStarting(true);
     requestOpenFile(brandExtractionPreviewFileName(projectFiles));
@@ -14054,7 +14100,7 @@ export function ProjectView({
     brandEnrichmentPromptSeedCache,
     currentProject.metadata,
     handleSend,
-    projectFiles,
+    scopedProjectFiles,
     requestOpenFile,
   ]);
 
@@ -14129,7 +14175,7 @@ export function ProjectView({
     const name = designSystemNameForSourceProject(currentProject);
     const pendingPrompt = buildCreateDesignSystemFromProjectPrompt({
       project: currentProject,
-      projectFiles,
+      projectFiles: scopedProjectFiles,
       activeDesignSystem: activeDesignSystemSummary,
     });
     setProjectDesignSystemCreateStarting(true);
@@ -14152,7 +14198,7 @@ export function ProjectView({
     currentProject,
     onCreateDesignSystemFromProject,
     projectDesignSystemCreateStarting,
-    projectFiles,
+    scopedProjectFiles,
     projectIsDesignSystemProject,
   ]);
 
@@ -15163,7 +15209,7 @@ export function ProjectView({
           })()}
           reloading={false}
           resolvedDir={projectDetail.resolvedDir}
-          files={projectFiles}
+          files={scopedProjectFiles}
           liveArtifacts={liveArtifacts}
           filesRefreshKey={committedFilesRefreshKey}
           filesGeneration={committedFilesGeneration}
@@ -15195,6 +15241,11 @@ export function ProjectView({
           designSystemActivityEvents={designSystemActivityEvents}
           tabsState={openTabsState}
           onTabsStateChange={persistTabsState}
+          onExcludeFolder={(folder) => {
+            const folders = new Set(openTabsState.excludedFolders ?? []);
+            folders.add(folder);
+            persistTabsState({ ...openTabsState, excludedFolders: [...folders] });
+          }}
           previewComments={visiblePreviewComments}
           previewCommentsState={visiblePreviewCommentsState}
           onRetryPreviewComments={refreshPreviewComments}

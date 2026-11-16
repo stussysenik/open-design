@@ -3057,6 +3057,7 @@ export const id: Dict = {
   'designFiles.groupBy': 'Kelompokkan menurut',
   'designFiles.groupByKind': 'Jenis',
   'designFiles.groupByModified': 'Diubah',
+  'designFiles.excludeFolder': 'Exclude from files and chat',
   'designFiles.filterBy': 'Filter menurut jenis',
   'designFiles.filterClear': 'Bersihkan',
   'designFiles.filterCount': '{n} jenis',

@@ -105,6 +105,8 @@ interface Props {
   folders?: ProjectFolder[];
   liveArtifacts: LiveArtifactWorkspaceEntry[];
   onRefreshFiles: () => Promise<void> | void;
+  /** Hide this folder and its files from this surface and the chat context. */
+  onExcludeFolder?: (folder: string) => void;
   onOpenFile: (name: string) => void;
   onOpenLiveArtifact: (tabId: LiveArtifactWorkspaceEntry['tabId']) => void;
   onRenameFile: (from: string, to: string) => Promise<ProjectFile | null> | ProjectFile | null;
@@ -499,6 +501,7 @@ export function DesignFilesPanel({
   folders,
   liveArtifacts,
   onOpenFile,
+  onExcludeFolder,
   onOpenLiveArtifact,
   onRenameFile,
   onDeleteFile,
@@ -1297,7 +1300,22 @@ export function DesignFilesPanel({
         </div>
         <span className="df-row-size" />
         <span className="df-row-time" />
-        <span className="df-row-menu df-row-menu-placeholder" aria-hidden />
+        {onExcludeFolder ? (
+          <button
+            type="button"
+            className="df-row-exclude od-tooltip"
+            data-testid={`design-files-exclude-${fullPath}`}
+            title={t('designFiles.excludeFolder')}
+            onClick={(event) => {
+              event.stopPropagation();
+              onExcludeFolder(fullPath);
+            }}
+          >
+            {t('designFiles.excludeFolder')}
+          </button>
+        ) : (
+          <span className="df-row-menu df-row-menu-placeholder" aria-hidden />
+        )}
       </div>
     );
   }

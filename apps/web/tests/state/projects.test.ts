@@ -31,6 +31,9 @@ import {
   patchProject,
   pickLocalFolderPath,
   publishGeneratedPluginToGitHub,
+  filterExcludedProjectFiles,
+  isPathExcluded,
+  shouldLoadFilesOnOpen,
   resolvedWorkspaceContextForWrite,
   startGeneratedPluginShareTask,
   uploadPluginFolder,
@@ -2455,6 +2458,50 @@ describe('saved project tabs cache', () => {
 
     await expect(loadTabs(projectId, null, { reconcileNewerCacheToDaemon: false }))
       .resolves.toEqual({ ...selection, updatedAt: 2, hasSavedState: true });
+  });
+
+  it('excludes an entire folder from the file list without dropping siblings', () => {
+    const files = [
+      { name: 'vendor/lib/a.js' },
+      { name: 'vendor/other.js' },
+      { name: 'src/app.ts' },
+      { name: 'vendorized.ts' },
+    ];
+
+    expect(filterExcludedProjectFiles(files, ['vendor']).map((f) => f.name)).toEqual([
+      'src/app.ts',
+      'vendorized.ts',
+    ]);
+    expect(filterExcludedProjectFiles(files, []).map((f) => f.name)).toEqual([
+      'vendor/lib/a.js',
+      'vendor/other.js',
+      'src/app.ts',
+      'vendorized.ts',
+    ]);
+    expect(isPathExcluded('vendor/lib/a.js', ['/vendor/'])).toBe(true);
+    expect(isPathExcluded('vendorized.ts', ['vendor'])).toBe(false);
+  });
+
+  it('defers automatic file loading when the Design Files tab is hidden', () => {
+    expect(shouldLoadFilesOnOpen({ tabs: [], active: '__design_files__' })).toBe(true);
+    expect(shouldLoadFilesOnOpen({
+      tabs: [], active: '__design_files__', designFilesTabHidden: true,
+    })).toBe(false);
+    expect(shouldLoadFilesOnOpen(null)).toBe(true);
+  });
+
+  it('restores excluded folders from the daemon tabs state', async () => {
+    vi.stubGlobal('window', { localStorage: { getItem: () => null } });
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => Response.json({
+      tabs: [],
+      active: '__design_files__',
+      excludedFolders: ['vendor', 'tmp/cache'],
+      hasSavedState: true,
+      updatedAt: 2,
+    })));
+
+    await expect(loadTabs('excluded-folders', null, { reconcileNewerCacheToDaemon: false }))
+      .resolves.toMatchObject({ excludedFolders: ['vendor', 'tmp/cache'] });
   });
 
   it('restores a closed Design Files tab from the daemon tabs state', async () => {

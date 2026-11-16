@@ -3057,6 +3057,7 @@ export const uk: Dict = {
   'designFiles.groupBy': 'Групувати за',
   'designFiles.groupByKind': 'Тип',
   'designFiles.groupByModified': 'Змінено',
+  'designFiles.excludeFolder': 'Exclude from files and chat',
   'designFiles.filterBy': 'Фільтрувати за типом',
   'designFiles.filterClear': 'Очистити',
   'designFiles.filterCount': '{n} типів',
