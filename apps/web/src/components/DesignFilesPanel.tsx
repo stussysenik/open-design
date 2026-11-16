@@ -727,10 +727,14 @@ export function DesignFilesPanel({
   const revealNextGridBatch = useCallback(() => {
     setGridRenderLimit((limit) => limit + GRID_RENDER_BATCH);
   }, []);
-  const limitGridEntries = (sectionFiles: ProjectFile[]): ProjectFile[] =>
-    canLazyRenderGrids ? sectionFiles.slice(0, gridRenderLimit) : sectionFiles;
-  const renderGridSentinel = (sectionFiles: ProjectFile[]) =>
-    canLazyRenderGrids && sectionFiles.length > gridRenderLimit ? (
+  // One revealed-count state serves every single-visible-section list in this
+  // panel (page grid, image masonry, plain rows, folders, live artifacts).
+  // Only one section is on screen at a time behind the tab bar, so the shared
+  // count cannot leak a batch from one list into another.
+  const limitGridEntries = <T,>(entries: T[]): T[] =>
+    canLazyRenderGrids ? entries.slice(0, gridRenderLimit) : entries;
+  const renderGridSentinel = (entries: { length: number }) =>
+    canLazyRenderGrids && entries.length > gridRenderLimit ? (
       <GridRenderSentinel
         // Keyed by the revealed count so each batch re-observes from scratch:
         // a fresh observation always reports the current intersection state,
@@ -1770,7 +1774,7 @@ export function DesignFilesPanel({
               ) : null}
               {resolvedTab === 'live-artifacts' ? (
                 <div className="df-section" key="live-artifacts">
-                  {liveArtifacts.map((artifact) => (
+                  {limitGridEntries(liveArtifacts).map((artifact) => (
                     <button
                       key={artifact.artifactId}
                       type="button"
@@ -1800,6 +1804,7 @@ export function DesignFilesPanel({
                       </span>
                     </button>
                   ))}
+                  {renderGridSentinel(liveArtifacts)}
                 </div>
               ) : null}
               {resolvedTab === 'plugin-folders' ? (
@@ -1876,7 +1881,8 @@ export function DesignFilesPanel({
               ) : null}
               {resolvedTab === 'folders' ? (
                 <div className="df-section" key="folders">
-                  {dirsAtCurrentDir.map((d) => renderDirRow(d))}
+                  {limitGridEntries(dirsAtCurrentDir).map((d) => renderDirRow(d))}
+                  {renderGridSentinel(dirsAtCurrentDir)}
                 </div>
               ) : null}
               {sections.map(([category, sectionFiles]) =>
@@ -1897,7 +1903,10 @@ export function DesignFilesPanel({
                         {renderGridSentinel(sectionFiles)}
                       </div>
                     ) : (
-                      sectionFiles.map((f) => renderFileRow(f, category))
+                      <>
+                        {limitGridEntries(sectionFiles).map((f) => renderFileRow(f, category))}
+                        {renderGridSentinel(sectionFiles)}
+                      </>
                     )}
                   </div>
                 ) : null,

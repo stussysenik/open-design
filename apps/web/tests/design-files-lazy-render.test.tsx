@@ -339,6 +339,50 @@ describe("DesignFilesPanel incremental grid rendering", () => {
   });
 });
 
+describe("DesignFilesPanel incremental file-row rendering", () => {
+  function textFile(name: string, index: number): ProjectFile {
+    return {
+      name,
+      path: name,
+      type: "file",
+      size: 4096,
+      mtime: BASE_MTIME - index * 1000,
+      kind: "text",
+      mime: "text/plain",
+    };
+  }
+
+  const rowCount = (container: HTMLElement) =>
+    container.querySelectorAll('[data-testid^="design-file-row-"]').length;
+
+  it("renders at most 48 plain file rows initially and grows on sentinel intersection", () => {
+    // A large project's non-page files (notes, logs, source) land here. The
+    // #6513 cap covered the page/image grids but this list rendered every row
+    // at once, which is the freeze reported in #9481.
+    const { container } = renderPanel(
+      Array.from({ length: 500 }, (_, i) => textFile(`notes-${i + 1}.txt`, i)),
+    );
+
+    expect(rowCount(container)).toBe(48);
+
+    const sentinel = screen.getByTestId("design-files-grid-sentinel");
+    act(() => fireIntersection(sentinel));
+    expect(rowCount(container)).toBe(96);
+  });
+
+  it("keeps the full count in the tab label while only the batch is rendered", () => {
+    renderPanel(
+      Array.from({ length: 500 }, (_, i) => textFile(`notes-${i + 1}.txt`, i)),
+    );
+
+    expect(
+      document.querySelector(
+        "[data-testid='design-files-tab-cat:text'] .df-tab-count",
+      )?.textContent,
+    ).toBe("500");
+  });
+});
+
 // Semantics guard: the root view's recursive flat listing is intentional
 // (#see dirsAtCurrentDir derivation) — the lazy-render fix must not silently
 // turn it into an immediate-children-only listing. Green before AND after.
