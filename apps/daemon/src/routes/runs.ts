@@ -12,6 +12,7 @@ import {
   type ByokChatProviderConfig,
   type ChatRunStatus,
   type ChatRunStatusResponse,
+  type StrategyTaskProjectionV2,
   type InstalledPluginRecord,
   type ProjectMetadata as ContractProjectMetadata,
   type RunResultPackageResponse,
@@ -1037,14 +1038,65 @@ export function registerRunRoutes(app: Express, ctx: RegisterRunRoutesDeps) {
     }
     return task;
   };
+  // `GET /api/runs` polls every 4s and `GET /api/runs/:id` attaches roughly
+  // once a second; a settled strategy task only changes through its persisted
+  // revision, so re-projecting (display JOIN) and re-reading delivery rows on
+  // every poll is pure waste. Settled tasks are memoized per
+  // (taskExecutionId, revision, runId); running tasks are never cached —
+  // their elapsed display must keep advancing.
+  const STRATEGY_CACHE_LIMIT = 500;
+  const strategyStatusCache = new Map<string, {
+    projection: StrategyTaskProjectionV2;
+    projectedSnapshotId: string | undefined;
+    telemetry: ChatRunStatusResponse['taskTelemetry'] | undefined;
+  }>();
+  const TERMINAL_STRATEGY_OUTCOMES = new Set(['completed', 'blocked', 'canceled']);
+  const strategyCacheKey = (task: StrategyTaskExecutionRecord, runId: string): string =>
+    `${task.taskExecutionId}|${task.revision}|${runId}`;
+  const rememberStrategyProjection = (
+    key: string,
+    entry: {
+      projection: StrategyTaskProjectionV2;
+      projectedSnapshotId: string | undefined;
+      telemetry: ChatRunStatusResponse['taskTelemetry'] | undefined;
+    },
+  ): void => {
+    if (strategyStatusCache.size >= STRATEGY_CACHE_LIMIT) {
+      const oldest = strategyStatusCache.keys().next().value;
+      if (oldest !== undefined) strategyStatusCache.delete(oldest);
+    }
+    strategyStatusCache.set(key, entry);
+  };
   const statusWithStrategyTask = (run: ChatRun): ChatRunStatusResponse => {
     let projectedSnapshotId: string | undefined;
+    let settledTelemetry: ChatRunStatusResponse['taskTelemetry'] | undefined;
+    let settledTelemetryResolved = false;
     try {
       const strategyTask = strategyTaskForRun(run, true);
-      const projection = strategyTask ? projectStrategyTask(strategyTask, run.id, db) : null;
-      if (projection) run.strategyTask = projection;
-      if (strategyTask && isLegacyHydratedRunWithoutAppliedSnapshot(run)) {
-        projectedSnapshotId = strategyTask.snapshotId;
+      const cacheKey = strategyTask && TERMINAL_STRATEGY_OUTCOMES.has(strategyTask.outcome)
+        ? strategyCacheKey(strategyTask, run.id)
+        : null;
+      const cached = cacheKey ? strategyStatusCache.get(cacheKey) : undefined;
+      if (cached) {
+        run.strategyTask = cached.projection;
+        projectedSnapshotId = cached.projectedSnapshotId;
+        settledTelemetry = cached.telemetry;
+        settledTelemetryResolved = true;
+      } else {
+        const projection = strategyTask ? projectStrategyTask(strategyTask, run.id, db) : null;
+        if (projection) run.strategyTask = projection;
+        if (strategyTask && isLegacyHydratedRunWithoutAppliedSnapshot(run)) {
+          projectedSnapshotId = strategyTask.snapshotId;
+        }
+        if (cacheKey && run.strategyTask) {
+          settledTelemetry = ctx.telemetry.taskTelemetryForRun?.(run.id);
+          settledTelemetryResolved = true;
+          rememberStrategyProjection(cacheKey, {
+            projection: run.strategyTask,
+            projectedSnapshotId,
+            telemetry: settledTelemetry,
+          });
+        }
       }
     } catch (error) {
       if (
@@ -1063,7 +1115,11 @@ export function registerRunRoutes(app: Express, ctx: RegisterRunRoutesDeps) {
       }
     }
     const status = design.runs.statusBody(run);
-    const taskTelemetry = status.strategyTask ? ctx.telemetry.taskTelemetryForRun?.(run.id) : undefined;
+    const taskTelemetry = settledTelemetryResolved
+      ? settledTelemetry
+      : status.strategyTask
+        ? ctx.telemetry.taskTelemetryForRun?.(run.id)
+        : undefined;
     if (taskTelemetry) status.taskTelemetry = taskTelemetry;
     // A read can derive display identity from the validated task, but must not
     // stamp the source Run and bypass clarification's linked-snapshot witness.
